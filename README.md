@@ -149,13 +149,13 @@ Satu aplikasi **Next.js (App Router, TypeScript)** menyajikan halaman sekaligus 
 | Lapisan | Pilihan |
 | --- | --- |
 | Framework | Next.js 15 (App Router) + React 19 + TypeScript |
-| UI | Tailwind CSS v4 dengan token design system NEXUS (font Plus Jakarta Sans) |
+| UI | Tailwind CSS v4 dengan token design system NEXUS; font Plus Jakarta Sans **di-host sendiri** (`@fontsource-variable`), build tidak bergantung jaringan ke Google |
 | Database | MongoDB (Atlas) + Mongoose |
 | Auth | Auth.js (next-auth v5) + MongoDB adapter, sesi JWT 30 hari |
 | Validasi | Zod (input API dan keluaran AI) |
 | AI | Gemini (REST) · Anthropic opsional · penilai heuristik sebagai cadangan |
 | PWA | Web manifest, service worker, halaman offline |
-| Pengujian | Vitest (unit & API), Playwright + axe-core (E2E, aksesibilitas) |
+| Pengujian | Vitest (unit, build, API), Playwright + axe-core (E2E, aksesibilitas) |
 
 ## Model data (MongoDB)
 
@@ -273,15 +273,33 @@ Produksi: `npm run build && npm start` (service worker hanya aktif di build prod
 
 Skrip bantu: `npm run seed -- --demo` (4 pengguna demo publik, **hanya dev**), `npm run migrate:levels` (reset level lama; `-- --apply` untuk menerapkan), `npm run docs:screenshots`.
 
+## Deploy ke Vercel
+
+1. **Import repo** di Vercel (framework terdeteksi otomatis: Next.js). Build tidak membutuhkan database maupun koneksi internet ke layanan font.
+2. **Environment Variables** (Project → Settings → Environment Variables):
+
+   | Variabel | Wajib | Catatan |
+   | --- | :---: | --- |
+   | `MONGODB_URI` | ✅ | URI MongoDB Atlas |
+   | `AUTH_SECRET` | ✅ | Buat dengan `npx auth secret` (nilai berbeda dari lokal) |
+   | `GEMINI_API_KEY` | AI | Tanpa ini AI Coach memakai penilai heuristik |
+   | `GEMINI_MODEL` | — | Mis. `gemini-3.5-flash,gemini-2.5-flash` |
+   | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | — | Untuk login Google (tambahkan URL callback `https://<domain>/api/auth/callback/google` di Google Cloud) |
+
+3. **MongoDB Atlas → Network Access**: izinkan `0.0.0.0/0`. Vercel memakai IP dinamis, sehingga allowlist IP tunggal akan membuat semua request gagal.
+4. Koleksi `roles` terisi otomatis saat pertama dipakai; `npm run seed` hanya perlu bila ingin mengisinya lebih dulu.
+5. Pengaman: `src/auth.ts` memakai konfigurasi lazy dan `src/lib/db.ts` tidak men-cache koneksi yang gagal, sehingga cold start serverless dapat pulih; `npm run test:build` menjaga build tetap lolos tanpa env.
+
 ## Pengujian
 
 Semua tes berjalan terhadap **MongoDB sementara di port acak dan build terpisah (`.next-test`)**: tidak menyentuh database di `.env.local` dan tidak mengganggu `npm run dev`. AI pada tes memakai penilai heuristik yang deterministik.
 
 ```bash
-npm test             # unit → API → E2E (±3 menit)
+npm test             # unit → build → API → E2E (±4 menit)
 npm run test:unit    # 67 tes: katalog, rumus, template, klien AI (fetch dipalsukan)
+npm run test:build   # 4 tes: build hermetik seperti Vercel (lingkungan kosong, DB tak terjangkau, tanpa Google Fonts)
 npm run test:api     # 112 tes: seluruh alur PRD lewat HTTP
-npm run test:e2e     # 47 tes: Chrome sungguhan — perjalanan lengkap, animasi, offline, WCAG/kontras, mobile 360 px
+npm run test:e2e     # 48 tes: Chrome sungguhan — perjalanan lengkap, animasi, offline, WCAG/kontras, mobile 360 px
 npm run test:ai-live # opt-in: memanggil Gemini sungguhan (memakai kuota)
 ```
 
