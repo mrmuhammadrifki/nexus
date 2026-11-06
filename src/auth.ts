@@ -24,7 +24,9 @@ const providers: any[] = [
 export const googleEnabled = !!(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
 if (googleEnabled) providers.push(Google({ allowDangerousEmailAccountLinking: true }));
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+// Konfigurasi lazy (fungsi): adapter/koneksi Mongo baru dibuat saat ADA request, bukan saat modul di-import.
+// Dengan begitu `next build` (mis. di Vercel) tidak butuh MONGODB_URI maupun akses jaringan ke database.
+export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   adapter: MongoDBAdapter(getMongoClient()),
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 }, // AU-1: 30 hari
   pages: { signIn: "/masuk" },
@@ -39,4 +41,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+}));

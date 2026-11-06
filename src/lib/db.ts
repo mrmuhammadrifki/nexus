@@ -11,13 +11,14 @@ export async function connectDB() {
   if (!uri) throw new Error("MONGODB_URI belum diset");
   if (cache.conn) return cache.conn;
   cache.promise ??= mongoose.connect(uri, { bufferCommands: false, serverSelectionTimeoutMS: 8000 });
-  cache.conn = await cache.promise;
+  try { cache.conn = await cache.promise; }
+  catch (e) { cache.promise = undefined; throw e; } // jangan men-cache kegagalan: percobaan berikutnya harus bisa pulih (cold start serverless)
   return cache.conn;
 }
 
 /** Koneksi native untuk adapter Auth.js. */
 export function getMongoClient(): Promise<MongoClient> {
   if (!uri) throw new Error("MONGODB_URI belum diset");
-  cache.client ??= new MongoClient(uri).connect();
+  cache.client ??= new MongoClient(uri).connect().catch((e) => { cache.client = undefined; throw e; });
   return cache.client;
 }

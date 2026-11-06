@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import "@fontsource-variable/plus-jakarta-sans/wght.css"; // font di-host sendiri: build tidak bergantung jaringan ke Google
 import "./globals.css";
 import { SWRegister } from "@/components/sw-register";
-
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-jakarta", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "NEXUS — Dari potensi jadi dampak", template: "%s · NEXUS" },
@@ -16,7 +14,7 @@ export const viewport: Viewport = { themeColor: "#2450e6", width: "device-width"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={jakarta.variable}>
+    <html lang="id">
       <head><noscript><style>{".reveal{opacity:1!important;transform:none!important}"}</style></noscript></head>
       <body>
         {children}
