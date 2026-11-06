@@ -31,6 +31,16 @@ test.describe("landing page", () => {
   });
 });
 
+test("font di-host sendiri: tidak ada request ke Google Fonts dan font Plus Jakarta Sans benar-benar terpakai", async ({ page }) => {
+  const external: string[] = [];
+  page.on("request", (r) => { if (/fonts\.(googleapis|gstatic)\.com/.test(r.url())) external.push(r.url()); });
+  await page.goto("/"); await page.waitForLoadState("networkidle");
+  expect(external).toEqual([]);
+  const loaded = await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('800 16px "Plus Jakarta Sans Variable"') && [...document.fonts].some((f) => f.family.includes("Plus Jakarta Sans") && f.status === "loaded"); });
+  expect(loaded).toBe(true);
+  expect(await page.locator("h1").evaluate((el) => getComputedStyle(el).fontFamily)).toContain("Plus Jakarta Sans Variable");
+});
+
 test.describe("animasi landing", () => {
   test.use({ reducedMotion: "no-preference" });
 
