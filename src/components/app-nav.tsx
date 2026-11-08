@@ -17,20 +17,20 @@ export function AppHeader({ name, major, invites }: { name: string; major: strin
     <header className="bg-white border-b border-line">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 min-h-[68px] flex items-center justify-between gap-4">
         <div className="flex items-center gap-7">
-          <Link href="/dashboard" className="flex items-center gap-2.5" aria-label="NEXUS dashboard"><Logo /><span className="text-lg font-extrabold tracking-[0.06em]">NEXUS</span></Link>
+          <Link href="/dashboard" prefetch={true} className="flex items-center gap-2.5" aria-label="NEXUS dashboard"><Logo /><span className="text-lg font-extrabold tracking-[0.06em]">NEXUS</span></Link>
           <nav aria-label="Menu aplikasi" className="hidden md:flex gap-1">
             {NAV.map((n) => {
               const on = inGroup(path, n.match);
-              return <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined} className={`px-3.5 py-2.5 rounded-[10px] text-sm ${on ? "bg-primary-tint text-primary font-semibold" : "text-ink-2 font-medium"}`}>{n.label}</Link>;
+              return <Link key={n.href} href={n.href} prefetch={true} aria-current={on ? "page" : undefined} className={`px-3.5 py-2.5 rounded-[10px] text-sm ${on ? "bg-primary-tint text-primary font-semibold" : "text-ink-2 font-medium"}`}>{n.label}</Link>;
             })}
           </nav>
         </div>
         <div className="flex items-center gap-2.5">
-          <Link href="/connect#undangan" aria-label={invites ? `${invites} undangan baru` : "Notifikasi"} className="relative w-11 h-11 rounded-xl border border-line bg-white text-ink-2 grid place-items-center">
+          <Link href="/connect#undangan" prefetch={true} aria-label={invites ? `${invites} undangan baru` : "Notifikasi"} className="relative w-11 h-11 rounded-xl border border-line bg-white text-ink-2 grid place-items-center">
             <Icon name="bell" />
             {invites > 0 && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-primary text-white text-[11px] font-bold grid place-items-center">{invites}</span>}
           </Link>
-          <Link href="/pengaturan" className="flex items-center gap-2.5 py-1 pl-1 pr-3 rounded-full border border-line">
+          <Link href="/pengaturan" prefetch={true} className="flex items-center gap-2.5 py-1 pl-1 pr-3 rounded-full border border-line">
             <Avatar name={name} />
             <span className="sr-only">Pengaturan akun {name}</span>
             <div className="leading-tight hidden sm:block" aria-hidden="true"><div className="text-sm font-bold">{name.split(" ")[0]}</div><div className="text-xs text-ink-3 max-w-28 truncate">{major}</div></div>
@@ -48,7 +48,7 @@ export function BottomNav() {
       {NAV.map((n) => {
         const on = inGroup(path, n.match);
         return (
-          <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined} className={`flex flex-col items-center justify-center gap-0.5 min-h-14 text-[11px] font-semibold ${on ? "text-primary" : "text-ink-3"}`}>
+          <Link key={n.href} href={n.href} prefetch={true} aria-current={on ? "page" : undefined} className={`flex flex-col items-center justify-center gap-0.5 min-h-14 text-[11px] font-semibold ${on ? "text-primary" : "text-ink-3"}`}>
             <Icon name={n.icon} size={22} />{n.label}
           </Link>
         );
@@ -71,7 +71,7 @@ export function Stepper({ steps }: { steps: { key: string; status: "done" | "act
           const st = steps[i]?.status ?? "next";
           const cur = path.startsWith(s.href);
           return (
-            <Link key={s.key} href={s.href} aria-current={cur ? "step" : undefined} className={`flex-[1_0_160px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl ${cur ? ACTIVE_BG[s.key] : ""}`}>
+            <Link key={s.key} href={s.href} prefetch={true} aria-current={cur ? "step" : undefined} className={`flex-[1_0_160px] flex items-center gap-3 px-3.5 py-2.5 rounded-xl ${cur ? ACTIVE_BG[s.key] : ""}`}>
               {st === "done" ? <DoneDot /> : st === "active" ? <ActiveDot color={ACTIVE_CLR[s.key]} /> : <EmptyDot />}
               <div><div className={`text-xs font-bold tracking-[0.06em] ${s.fg}`}>{s.n} {s.key}</div><div className="text-[13px] text-ink-2">{LABEL[st]}</div></div>
             </Link>

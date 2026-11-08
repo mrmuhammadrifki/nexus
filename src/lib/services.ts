@@ -10,9 +10,14 @@ export const INVITE_TTL_MS = 7 * 24 * 3600 * 1000;
 export const oid = (id: string) => new Types.ObjectId(id);
 
 /* ---------- Roles (data referensi) ---------- */
+let cachedRoles: any[] | null = null;
+export function clearRolesCache() { cachedRoles = null; }
+
 export async function ensureRoles() {
+  if (cachedRoles && cachedRoles.length > 0) return cachedRoles;
   if ((await Role.estimatedDocumentCount()) === 0) await Role.insertMany(ROLE_SEEDS).catch(() => {});
-  return Role.find().lean<any[]>();
+  cachedRoles = await Role.find().lean<any[]>();
+  return cachedRoles;
 }
 
 /** Tebak peran target dari skill (berlevel) + minat (KN-2). Bisa dipilih ulang pengguna di KNOW/GROW. */
@@ -174,11 +179,13 @@ export async function candidates(userId: string, roleFilter?: string) {
   return { candidates: out, gapSkills: plan.gaps.filter((g) => g.gap > 0).map((g) => g.name) };
 }
 
-export async function teamView(userId: string) {
-  const project = await activeProjectFor(userId);
+export async function teamView(userId: string, proj?: any) {
+  const project = proj ?? (await activeProjectFor(userId));
   const ids = project.members.map((m: any) => m.userId);
-  const users = await User.find({ _id: { $in: ids } }).lean<any[]>();
-  const profs = await Profile.find({ userId: { $in: ids } }).lean<any[]>();
+  const [users, profs] = await Promise.all([
+    User.find({ _id: { $in: ids } }).lean<any[]>(),
+    Profile.find({ userId: { $in: ids } }).lean<any[]>(),
+  ]);
   const uBy = new Map(users.map((u) => [String(u._id), u]));
   const pBy = new Map(profs.map((p) => [String(p.userId), p]));
   const members = project.members
@@ -195,6 +202,7 @@ export async function teamView(userId: string) {
 export async function pendingInvites(userId: string) {
   const u = oid(userId);
   const ps = await Project.find({ members: { $elemMatch: { userId: u, status: "invited" } } }).lean<any[]>();
+  if (!ps.length) return [];
   const owners = await User.find({ _id: { $in: ps.map((p) => p.ownerId) } }).lean<any[]>();
   const oBy = new Map(owners.map((o) => [String(o._id), o]));
   return ps.flatMap((p) => {
@@ -211,13 +219,39 @@ export async function logActivity(actorId: string, type: string, projectId?: any
 /* ---------- Dashboard ---------- */
 const STEP_LABELS = ["KNOW", "GROW", "CONNECT", "CREATE", "IMPACT"] as const;
 
-export async function dashboard(userId: string) {
-  const user = await User.findById(userId).lean<any>();
-  const profile = await getProfile(userId);
-  const project = await activeProjectFor(userId);
+export async function dashboard(userId: string, existingUser?: any) {
+  const uId = oid(userId);
+
+  // Batch 1: Query user, profile, active project, pending invites, and member project IDs in parallel
+  const [user, profile, project, pendingInvs, myProjects] = await Promise.all([
+    existingUser ?? User.findById(userId).lean<any>(),
+    getProfile(userId),
+    activeProjectFor(userId),
+    pendingInvites(userId),
+    Project.find({ "members.userId": uId }).select("_id").lean<any[]>(),
+  ]);
+
+  const pids = myProjects.map((p) => p._id);
+  if (!pids.some((id: any) => String(id) === String(project._id))) {
+    pids.push(project._id);
+  }
+
+  // Batch 2: In parallel, query assessment, team view (passing project directly), and activity feed
+  const [last, team, acts] = await Promise.all([
+    Assessment.findOne({ projectId: project._id }).sort({ createdAt: -1 }).lean<any>(),
+    teamView(userId, project),
+    Activity.find({ $or: [{ projectId: { $in: pids } }, { actorId: uId }] })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean<any[]>(),
+  ]);
+
+  // Batch 3: Query activity actors in parallel only if activities exist
+  const actorIds = acts.length > 0 ? [...new Set(acts.map((a) => String(a.actorId)))].map(oid) : [];
+  const actors = actorIds.length > 0 ? await User.find({ _id: { $in: actorIds } }).select("name").lean<any>() : [];
+  const aBy = new Map(actors.map((a: any) => [String(a._id), a.name]));
+
   const filled = canvasFilled(project.canvas);
-  const last = await Assessment.findOne({ projectId: project._id }).sort({ createdAt: -1 }).lean<any>();
-  const team = await teamView(userId);
   const accepted = team.members.filter((m: any) => m.status === "accepted").length;
 
   const done = [
@@ -240,11 +274,6 @@ export async function dashboard(userId: string) {
   } else if (!last) next = { title: "Kanvas lengkap! Cek skor kesiapan proyekmu", href: "/impact", cta: "Buka IMPACT" };
   else next = { title: "Upgrade bagian yang masih lemah, lalu nilai ulang", href: "/create", cta: "Buka kanvas" };
 
-  const mine = (await Project.find({ "members.userId": oid(userId) }).select("_id").lean<any[]>()).map((p) => p._id);
-  const acts = await Activity.find({ $or: [{ projectId: { $in: mine } }, { actorId: oid(userId) }] }).sort({ createdAt: -1 }).limit(10).lean<any[]>();
-  const actors = await User.find({ _id: { $in: acts.map((a) => a.actorId) } }).lean<any[]>();
-  const aBy = new Map(actors.map((a) => [String(a._id), a.name]));
-
   const plan = profile?.knowDone ? await getPlan(userId).catch(() => null) : null;
   return {
     user: { name: user?.name ?? "", major: user?.major ?? "" },
@@ -254,7 +283,7 @@ export async function dashboard(userId: string) {
     profile: profile?.knowDone ? { label: profile.profileLabel, interests: profile.interests, skills: profile.skills.map((s: any) => s.name), goal: (profile.goals?.length ? profile.goals : [profile.goal]).map((id: string) => GOALS.find((g) => g.id === id)?.title).filter(Boolean).join(" · ") } : null,
     topGaps: plan?.gaps.filter((g) => g.gap > 0).slice(0, 3) ?? [],
     team: team.members, score: last ? { score: last.score, level: last.level } : null,
-    invites: await pendingInvites(userId),
+    invites: pendingInvs,
     activities: acts.map((a) => ({ type: a.type, actor: aBy.get(String(a.actorId)) ?? "Seseorang", payload: a.payload, at: a.createdAt })),
   };
 }

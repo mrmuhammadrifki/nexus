@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api } from "@/lib/client";
 import { FIELDS, MAX_SKILLS, SKILLS, fieldsOfSkill } from "@/lib/catalog";
 import { Icon } from "./ui";
+import { SkillsSkeleton } from "./skeletons";
 
 /** Halaman "Semua skill": cari + filter per bidang. Pilihan langsung tersimpan ke profil. */
 export function SkillsBrowser() {
@@ -11,11 +12,17 @@ export function SkillsBrowser() {
   const [myFields, setMyFields] = useState<string[]>([]);
   const [field, setField] = useState("Semua");
   const [q, setQ] = useState("");
+  const [err, setErr] = useState("");
   const [state, setState] = useState<"" | "saving" | "saved" | "error">("");
   const seq = useRef(0);
 
   useEffect(() => {
-    api("/api/profile").then((d) => { setPicked((d.skills ?? []).map((s: any) => s.name)); setMyFields(d.interests ?? []); });
+    api("/api/profile")
+      .then((d) => {
+        setPicked((d.skills ?? []).map((s: any) => s.name));
+        setMyFields(d.interests ?? []);
+      })
+      .catch((e: any) => setErr(e.message || "Gagal memuat skill"));
   }, []);
 
   const list = useMemo(() => {
@@ -24,7 +31,15 @@ export function SkillsBrowser() {
     return k ? base.filter((s) => s.toLowerCase().includes(k) || fieldsOfSkill(s).some((f) => f.toLowerCase().includes(k))) : base;
   }, [field, q, myFields]);
 
-  if (!picked) return <p role="status" className="text-ink-2">Memuat…</p>;
+  if (err) {
+    return (
+      <div className="card p-6 flex flex-col gap-3 items-start">
+        <p className="text-[#B42318] m-0 font-medium" role="alert">{err}</p>
+        <Link href="/know" className="btn-primary">Kembali ke KNOW</Link>
+      </div>
+    );
+  }
+  if (!picked) return <SkillsSkeleton />;
   const full = picked.length >= MAX_SKILLS;
 
   async function toggle(s: string) {

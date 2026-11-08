@@ -6,6 +6,7 @@ import { api, useDebounced, useFetch } from "@/lib/client";
 import { CANVAS_META } from "@/lib/catalog";
 import { EXAMPLES, PLACEHOLDER, TEMPLATES, countPlaceholders, defaultExampleFor, isFilled, type SectionKey } from "@/lib/templates";
 import { AiNote, Avatar, BackLink, Bridge, DoneDot, Icon } from "./ui";
+import { CreateSkeleton } from "./skeletons";
 
 type Fb = { good: string; improve: string; rewrite: string; ideas: string[] };
 type Team = { projectId: string; title: string; members: { userId: string; name: string; role: string; status: string }[] };
@@ -52,7 +53,15 @@ export function CreateCanvas() {
     document.addEventListener("visibilitychange", h); return () => document.removeEventListener("visibilitychange", h);
   }, [flush]);
 
-  if (!texts || !pid) return <p role="status" className="text-ink-2">{team.error || canvasF.error || "Memuat…"}</p>;
+  if (team.error || canvasF.error) {
+    return (
+      <div className="card p-6 flex flex-col gap-3 items-start">
+        <p className="text-[#B42318] m-0 font-medium" role="alert">{team.error || canvasF.error}</p>
+        <button type="button" onClick={() => { team.reload(); canvasF.reload(); }} className="btn-primary">Coba lagi</button>
+      </div>
+    );
+  }
+  if (!texts || !pid) return <CreateSkeleton />;
   const m = CANVAS_META[active];
   const filled = texts.map(isFilled); // terisi = ada isi & tak ada placeholder template tersisa
   const done = filled.filter(Boolean).length;
@@ -113,7 +122,10 @@ export function CreateCanvas() {
             <p className="m-0 text-base leading-relaxed text-ink-2">{m.question}</p>
           </div>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-semibold">Jawabanmu</span>
+            <span className="text-sm font-semibold flex items-center justify-between">
+              <span>Jawabanmu <span className="text-[#B42318]">*</span></span>
+              <span className="text-xs font-normal text-ink-3">Wajib diisi</span>
+            </span>
             <textarea ref={taRef} value={texts[active]} onChange={(e) => setText(e.target.value)} placeholder={m.placeholder} rows={7} maxLength={4000} className="w-full resize-y p-4 rounded-[14px] border-[1.5px] border-line-2 bg-[#FCFCFE] text-base leading-relaxed" />
           </label>
           {countPlaceholders(texts[active]) > 0 && <p role="status" className="m-0 -mt-2 text-sm font-semibold text-impact-fg">Masih ada {countPlaceholders(texts[active])} bagian dalam [kurung siku] yang perlu kamu ganti. Bagian ini baru dihitung terisi setelah semuanya diganti.</p>}

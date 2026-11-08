@@ -5,6 +5,7 @@ import { api, useFetch } from "@/lib/client";
 import { BackLink, Bridge, Icon, Progress } from "./ui";
 import { LEVELS, levelLabel } from "@/lib/catalog";
 import { useRouter } from "next/navigation";
+import { GrowSkeleton } from "./skeletons";
 
 type Plan = { role: { slug: string; name: string }; roles: { slug: string; name: string }[]; gaps: { name: string; cur: number; target: number; weight: number; gap: number; priority: number }[]; items: { skill: string; title: string; meta: string; priority: number; done: boolean }[]; levelsRated: boolean; suggestions: { slug: string; name: string; fit: number }[] };
 
@@ -15,9 +16,9 @@ export function GrowView() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  if (loading && !data) return <p className="text-ink-2" role="status">Memuat…</p>;
+  if (loading && !data) return <GrowSkeleton />;
   if (error?.includes("KNOW")) return <div className="card flex flex-col gap-3 items-start"><p className="m-0">Selesaikan KNOW dulu biar kami tau target peranmu.</p><Link href="/know" className="btn-primary">Ke KNOW</Link></div>;
-  if (!data) return <p role="alert" className="text-[#B42318]">{error || "Gagal memuat"}</p>;
+  if (!data) return <div className="card p-6 flex flex-col gap-3 items-start"><p role="alert" className="text-[#B42318] m-0 font-medium">{error || "Gagal memuat"}</p><button type="button" onClick={() => reload()} className="btn-primary">Coba lagi</button></div>;
 
   async function setLevel(name: string, level: number) {
     setBusy(true); setMsg("");

@@ -25,7 +25,7 @@ const rel = (d: Date | string) => {
 
 export default async function Dashboard() {
   const { id, user } = await getSession();
-  const d = await getDash(id);
+  const d = await getDash(id, user);
   const date = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   const BADGE = { done: <Pill tone="green">Beres</Pill>, active: <Pill tone="violet">Lagi jalan</Pill>, next: <Pill>Next</Pill> } as const;
   const SUB = ["Profil potensi", "Prioritas belajar", "Tim proyek", `Kanvas proyek · ${d.canvasFilled}/6`, "Skor kesiapan"];
@@ -38,7 +38,7 @@ export default async function Dashboard() {
           <h1 className="m-0 text-[28px] sm:text-4xl leading-[1.15] font-extrabold tracking-[-0.025em]">Hai {user.name?.split(" ")[0]}, welcome back!</h1>
           <p className="m-0 text-base text-ink-2">{d.steps.filter((s) => s.done).length} dari 5 step udah beres.{d.pct === 100 ? " Mantap, perjalananmu lengkap!" : " Dikit lagi proyekmu siap bikin dampak!"}</p>
         </div>
-        <Link href={d.next.href} className="btn-primary h-[50px] rounded-[14px]">{d.next.cta} <Icon name="arrow" size={18} sw={2.2} /></Link>
+        <Link href={d.next.href} prefetch={true} className="btn-primary h-[50px] rounded-[14px]">{d.next.cta} <Icon name="arrow" size={18} sw={2.2} /></Link>
       </div>
 
       {d.invites.length > 0 && <InviteList invites={d.invites as any} />}
@@ -55,7 +55,7 @@ export default async function Dashboard() {
           {STEPS.map((s, i) => {
             const st = d.steps[i].status as "done" | "active" | "next";
             return (
-              <Link key={s.key} href={s.href} className={`flex flex-col gap-3 p-[18px] rounded-2xl ${st === "active" ? "border-2 border-create bg-[#FAF7FF]" : st === "next" ? "border border-dashed border-line-2" : "border border-line"}`}>
+              <Link key={s.key} href={s.href} prefetch={true} className={`flex flex-col gap-3 p-[18px] rounded-2xl ${st === "active" ? "border-2 border-create bg-[#FAF7FF]" : st === "next" ? "border border-dashed border-line-2" : "border border-line"}`}>
                 <div className="flex justify-between items-center"><div className={`w-10 h-10 rounded-xl grid place-items-center ${s.tint} ${s.fg}`}><Icon name={s.icon} /></div>{BADGE[st]}</div>
                 <div><div className={`label-caps ${s.fg}`}>{s.n} · {s.key}</div><div className="text-[15px] font-bold mt-1">{SUB[i]}</div></div>
               </Link>
@@ -74,11 +74,11 @@ export default async function Dashboard() {
                 {d.canvasFilled > 0 || d.steps[2].done ? <p className="mt-1.5 mb-0 text-[15px] text-ink-2">Proyek: <strong className="text-ink">{d.projectTitle}</strong>{d.tagline && <> · {d.tagline}</>}</p> : null}
                 <span className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-dark bg-primary-tint px-3 py-1.5 rounded-full"><Icon name="spark" size={14} />AI Coach siap kasih masukan di tiap bagian kanvas</span>
               </div>
-              <Link href={d.next.href} className="btn bg-create-tint text-create-fg h-11 rounded-xl text-sm">{d.next.cta}</Link>
+              <Link href={d.next.href} prefetch={true} className="btn bg-create-tint text-create-fg h-11 rounded-xl text-sm">{d.next.cta}</Link>
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2">
               {d.canvasKeys.map((k, i) => (
-                <Link key={k.key} href={`/create?s=${i}`} className="p-3 rounded-xl bg-bg flex flex-col gap-1.5">
+                <Link key={k.key} href={`/create?s=${i}`} prefetch={true} className="p-3 rounded-xl bg-bg flex flex-col gap-1.5">
                   {k.filled ? <DoneDot size={18} /> : <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="#C3C9DA" strokeWidth="2" /></svg>}
                   <span className={`text-[13px] font-semibold ${k.filled ? "" : "text-ink-3"}`}>{CANVAS_META[i].title}</span>
                 </Link>
@@ -90,22 +90,22 @@ export default async function Dashboard() {
             <h2 id="sum-h" className="m-0 text-lg font-bold">Rekap hasilmu</h2>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4">
               <div className="card flex flex-col gap-3.5">
-                <div className="flex justify-between items-center"><span className="label-caps text-know-fg">PROFIL POTENSI · KNOW</span><Link href="/know" className="text-[13px] font-semibold text-primary">Detail</Link></div>
+                <div className="flex justify-between items-center"><span className="label-caps text-know-fg">PROFIL POTENSI · KNOW</span><Link href="/know" prefetch={true} className="text-[13px] font-semibold text-primary">Detail</Link></div>
                 {d.profile ? <>
                   <div className="text-[17px] font-bold">{d.profile.label}</div>
                   {d.profile.goal && <div className="text-sm text-ink-2">Target: <strong className="text-ink">{d.profile.goal}</strong></div>}
                   <div className="flex flex-wrap gap-2">{d.profile.skills.slice(0, 4).concat(d.profile.interests.slice(0, 2)).map((t: string) => <span key={t} className="text-[13px] font-semibold px-3 py-1.5 rounded-full bg-know-tint text-know-fg">{t}</span>)}</div>
-                </> : <p className="m-0 text-sm text-ink-2">Belum diisi. <Link className="text-primary font-semibold" href="/know">Mulai KNOW</Link></p>}
+                </> : <p className="m-0 text-sm text-ink-2">Belum diisi. <Link className="text-primary font-semibold" href="/know" prefetch={true}>Mulai KNOW</Link></p>}
               </div>
               <div className="card flex flex-col gap-3.5">
-                <div className="flex justify-between items-center"><span className="label-caps text-grow-fg">PRIORITAS BELAJAR · GROW</span><Link href="/grow" className="text-[13px] font-semibold text-primary">Detail</Link></div>
+                <div className="flex justify-between items-center"><span className="label-caps text-grow-fg">PRIORITAS BELAJAR · GROW</span><Link href="/grow" prefetch={true} className="text-[13px] font-semibold text-primary">Detail</Link></div>
                 {d.topGaps.length ? d.topGaps.map((g: any, i: number) => (
                   <div key={g.name}><div className="flex justify-between text-sm font-semibold mb-1.5"><span>{i + 1}. {g.name}</span><span className="text-ink-3">{g.cur}/5 → {g.target}/5</span></div>
                     <div className="h-1.5 rounded-full bg-grow-tint"><div className="h-1.5 rounded-full bg-[#16A34A]" style={{ width: `${(g.cur / g.target) * 100}%` }} /></div></div>
                 )) : <p className="m-0 text-sm text-ink-2">{d.profile ? "Semua skill on target 🎉" : "Kebuka setelah KNOW selesai."}</p>}
               </div>
               <div className="card flex flex-col gap-3.5">
-                <div className="flex justify-between items-center"><span className="label-caps text-connect-fg">TIM PROYEK · CONNECT</span><Link href="/connect" className="text-[13px] font-semibold text-primary">Detail</Link></div>
+                <div className="flex justify-between items-center"><span className="label-caps text-connect-fg">TIM PROYEK · CONNECT</span><Link href="/connect" prefetch={true} className="text-[13px] font-semibold text-primary">Detail</Link></div>
                 <div className="flex flex-col gap-2.5">{d.team.map((m: any) => (
                   <div key={m.userId} className="flex items-center gap-3"><Avatar name={m.name} /><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate">{m.name}{m.userId === id ? " (kamu)" : ""}</div><div className="text-[13px] text-ink-3">{m.status === "invited" ? "Nunggu konfirmasi" : m.role}</div></div></div>
                 ))}</div>

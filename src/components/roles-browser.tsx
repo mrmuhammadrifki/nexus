@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api } from "@/lib/client";
 import { FIELDS } from "@/lib/catalog";
 import { BackLink, Icon } from "./ui";
+import { RolesSkeleton } from "./skeletons";
 
 type Role = { slug: string; name: string; fields: string[]; fit: number; matched: string[]; missing: string[]; tags: string[]; skills: string[] };
 
@@ -29,7 +30,7 @@ export function RolesBrowser() {
   }
 
   if (err) return <div className="card flex flex-col gap-3 items-start"><p className="m-0">{err}</p><Link href="/know" className="btn-primary">Ke KNOW</Link></div>;
-  if (!roles) return <p role="status" className="text-ink-2">Memuat…</p>;
+  if (!roles) return <RolesSkeleton />;
 
   return (
     <>

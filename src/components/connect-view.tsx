@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api, useFetch } from "@/lib/client";
 import { Avatar, BackLink, Bridge, Icon } from "./ui";
 import { InviteList, type Invite } from "./invite-list";
+import { CandidateCardsSkeleton, ConnectSkeleton } from "./skeletons";
 
 type Team = { projectId: string; title: string; isOwner: boolean; invites: Invite[]; members: { userId: string; name: string; role: string; status: "accepted" | "invited"; isOwner: boolean; skills: { name: string; level: number }[] }[] };
 type Cands = { gapSkills: string[]; candidates: { userId: string; name: string; major: string; role: string; skills: string[]; match: number; reason: string }[] };
@@ -26,6 +27,7 @@ export function ConnectView() {
   const isMember = (id: string) => t?.members.some((m) => m.userId === id);
 
   if (cands.error.includes("KNOW")) return <div className="card flex flex-col gap-3 items-start"><p className="m-0">Selesaikan KNOW dan GROW dulu biar rekomendasinya pas.</p><Link href="/know" className="btn-primary">Ke KNOW</Link></div>;
+  if (!t && team.loading && !cands.data && cands.loading) return <ConnectSkeleton />;
 
   const gaps = cands.data?.gapSkills ?? [];
   return (
@@ -56,7 +58,13 @@ export function ConnectView() {
             <span className="text-sm text-ink-3" aria-live="polite">{cands.data?.candidates.length ?? 0} rekomendasi · paling klop di atas</span>
           </div>
 
-          {cands.loading && !cands.data && <p role="status" className="text-ink-2">Mencari partner…</p>}
+          {cands.loading && !cands.data && <CandidateCardsSkeleton />}
+          {cands.error && !cands.error.includes("KNOW") && (
+            <div className="card p-5 flex flex-col gap-3 items-start">
+              <p role="alert" className="text-[#B42318] m-0 font-medium">{cands.error}</p>
+              <button type="button" onClick={() => cands.reload()} className="btn-secondary h-10 px-4 text-sm">Coba lagi</button>
+            </div>
+          )}
           {cands.data && cands.data.candidates.length < 3 && (
             <div className="rounded-2xl border border-dashed border-connect/50 bg-[#F4FBFB] p-5 text-sm text-ink-2">
               <strong className="text-ink">Kandidatnya masih sedikit.</strong> Ajak temanmu dari jurusan lain buat daftar dan nyalain profil publik — rekomendasinya makin banyak begitu mereka gabung.

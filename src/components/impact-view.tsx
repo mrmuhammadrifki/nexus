@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api, useFetch } from "@/lib/client";
 import { INDICATORS } from "@/lib/catalog";
 import { AiNote, BackLink, Icon } from "./ui";
+import { ImpactSkeleton } from "./skeletons";
 
 type Ind = { key: string; weight: number; value: number; why: string; tip: string };
 type Res = { id: string; score: number; level: string; weightsVersion: string; model: string; createdAt: string; indicators: Ind[] };
@@ -24,7 +25,15 @@ export function ImpactView() {
     try { await api(`/api/projects/${pid}/assess`, { method: "POST" }); setSel(0); d.reload(); }
     catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
-  if (!d.data || !pid) return <p role="status" className="text-ink-2">{team.error || d.error || "Memuat…"}</p>;
+  if (team.error || d.error) {
+    return (
+      <div className="card p-6 flex flex-col gap-3 items-start">
+        <p className="text-[#B42318] m-0 font-medium" role="alert">{team.error || d.error}</p>
+        <button type="button" onClick={() => { team.reload(); d.reload(); }} className="btn-primary">Coba lagi</button>
+      </div>
+    );
+  }
+  if (!d.data || !pid) return <ImpactSkeleton />;
 
   const cur = d.data.history[sel];
   const locked = d.data.filled < 6;

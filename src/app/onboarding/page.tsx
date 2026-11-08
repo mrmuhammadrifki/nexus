@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { isValidObjectId } from "mongoose";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models";
@@ -8,9 +9,10 @@ import { ProfileForm } from "@/components/profile-form";
 export const metadata = { title: "Lengkapi profil" };
 export default async function Page() {
   const s = await auth();
-  if (!s?.user?.id) redirect("/masuk");
+  const uid = s?.user?.id;
+  if (!uid || !isValidObjectId(uid)) redirect("/masuk");
   await connectDB();
-  const u = await User.findById(s.user.id).lean<any>();
+  const u = await User.findById(uid).lean<any>();
   if (!u) redirect("/masuk");
   return (
     <main className="min-h-dvh grid place-items-center px-4 py-10">

@@ -9,12 +9,39 @@ export function AuthForm({ mode, google }: { mode: "masuk" | "daftar"; google: b
   const router = useRouter();
   const [f, setF] = useState({ name: "", email: "", password: "" });
   const [err, setErr] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const reg = mode === "daftar";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setErr("");
+    setErr("");
+    const errors: Record<string, string> = {};
+
+    if (reg) {
+      if (!f.name.trim()) errors.name = "Nama wajib diisi";
+      else if (f.name.trim().length < 2) errors.name = "Nama minimal 2 karakter";
+    }
+
+    if (!f.email.trim()) {
+      errors.email = "Email wajib diisi";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) {
+      errors.email = "Format email tidak valid (contoh: nama@kampus.ac.id)";
+    }
+
+    if (!f.password) {
+      errors.password = "Password wajib diisi";
+    } else if (reg && f.password.length < 8) {
+      errors.password = "Password minimal 8 karakter";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setFieldErrors({});
+    setBusy(true);
     try {
       if (reg) await api("/api/register", { method: "POST", json: f });
       const r = await signIn("credentials", { email: f.email, password: f.password, redirect: false });
@@ -39,9 +66,37 @@ export function AuthForm({ mode, google }: { mode: "masuk" | "daftar"; google: b
         </>
       )}
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-        {reg && <Field label="Nama" value={f.name} onChange={(v) => setF({ ...f, name: v })} autoComplete="name" />}
-        <Field label="Email" type="email" value={f.email} onChange={(v) => setF({ ...f, email: v })} autoComplete="email" />
-        <Field label="Password" type="password" value={f.password} onChange={(v) => setF({ ...f, password: v })} autoComplete={reg ? "new-password" : "current-password"} hint={reg ? "Minimal 8 karakter" : undefined} />
+        {reg && (
+          <Field
+            label="Nama Lengkap"
+            value={f.name}
+            onChange={(v) => { setF({ ...f, name: v }); if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: "" }); }}
+            autoComplete="name"
+            required
+            error={fieldErrors.name}
+            placeholder="mis. Muhammad Rifki"
+          />
+        )}
+        <Field
+          label="Email"
+          type="email"
+          value={f.email}
+          onChange={(v) => { setF({ ...f, email: v }); if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: "" }); }}
+          autoComplete="email"
+          required
+          error={fieldErrors.email}
+          placeholder="nama@email.com"
+        />
+        <Field
+          label="Password"
+          type="password"
+          value={f.password}
+          onChange={(v) => { setF({ ...f, password: v }); if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: "" }); }}
+          autoComplete={reg ? "new-password" : "current-password"}
+          required
+          error={fieldErrors.password}
+          hint={reg ? "Minimal 8 karakter" : undefined}
+        />
         {err && <p role="alert" className="m-0 text-sm font-semibold text-[#B42318] bg-[#FEF3F2] rounded-xl px-3.5 py-2.5">{err}</p>}
         <button className="btn-primary w-full" disabled={busy}>{busy ? "Sebentar…" : reg ? "Daftar" : "Masuk"}</button>
       </form>
@@ -53,12 +108,49 @@ export function AuthForm({ mode, google }: { mode: "masuk" | "daftar"; google: b
   );
 }
 
-export function Field({ label, value, onChange, type = "text", hint, ...rest }: { label: string; value: string; onChange: (v: string) => void; type?: string; hint?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value" | "type">) {
+export function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  hint,
+  required,
+  error,
+  className,
+  ...rest
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  hint?: string;
+  required?: boolean;
+  error?: string;
+  className?: string;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value" | "type" | "required" | "className">) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-semibold">{label}</span>
-      <input className="input" type={type} value={value} onChange={(e) => onChange(e.target.value)} required {...rest} />
-      {hint && <span className="text-xs text-ink-3">{hint}</span>}
+    <label className={`flex flex-col gap-1.5 ${className ?? ""}`}>
+      <span className="text-sm font-semibold flex items-center justify-between">
+        <span>
+          {label}
+          {required && <span className="text-[#B42318] ml-1" title="Wajib diisi">*</span>}
+        </span>
+        {required && <span className="text-xs font-normal text-ink-3">Wajib</span>}
+      </span>
+      <input
+        className={`input ${error ? "input-error" : ""}`}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        aria-invalid={!!error}
+        {...rest}
+      />
+      {error ? (
+        <span role="alert" className="text-xs font-semibold text-[#B42318]">{error}</span>
+      ) : hint ? (
+        <span className="text-xs text-ink-3">{hint}</span>
+      ) : null}
     </label>
   );
 }

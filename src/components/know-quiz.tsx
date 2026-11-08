@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/client";
 import { GOALS, INTERESTS, LEVELS, MAX_GOALS, MAX_INTERESTS, MAX_SKILLS, SKILLS, WORK_STYLES, levelLabel, popularSkillsFor } from "@/lib/catalog";
 import { BackLink, Bridge, Icon, Progress } from "./ui";
+import { KnowSkeleton } from "./skeletons";
 
 type P = { interests: string[]; skillNames: string[]; levels: Record<string, number | null>; goals: string[]; workStyle: string; label?: string; role?: string | null; roleSlug?: string | null; options: { slug: string; name: string; fit: number; matched: string[]; missing: string[]; tags: string[] }[] };
 // 5 langkah internal, tampil sebagai 4 pertanyaan (langkah level = lanjutan pertanyaan skill).
@@ -13,18 +14,37 @@ const TITLES = ["Minat", "Skill", "Target", "Gaya kerja"];
 
 export function KnowQuiz() {
   const [p, setP] = useState<P | null>(null);
+  const [fetchErr, setFetchErr] = useState("");
+  const [loading, setLoading] = useState(true);
   const sp = useSearchParams();
   const [step, setStep] = useState(Math.min(4, Math.max(0, Number(sp.get("step")) || 0)));
   const [saving, setSaving] = useState<"" | "saving" | "saved" | "error">("");
   const seq = useRef(0);
 
-  useEffect(() => {
-    api("/api/profile").then((d) => setP({
-      interests: d.interests ?? [], skillNames: (d.skills ?? []).map((s: any) => s.name), levels: Object.fromEntries((d.skills ?? []).map((s: any) => [s.name, s.level ?? null])),
-      goals: d.goals ?? [], workStyle: d.workStyle ?? "",
-      label: d.profileLabel, role: d.targetRoleName, roleSlug: d.targetRole ?? null, options: d.roleOptions ?? [],
-    }));
+  const loadProfile = useCallback(() => {
+    setLoading(true);
+    setFetchErr("");
+    api("/api/profile")
+      .then((d) => {
+        setP({
+          interests: d.interests ?? [],
+          skillNames: (d.skills ?? []).map((s: any) => s.name),
+          levels: Object.fromEntries((d.skills ?? []).map((s: any) => [s.name, s.level ?? null])),
+          goals: d.goals ?? [],
+          workStyle: d.workStyle ?? "",
+          label: d.profileLabel,
+          role: d.targetRoleName,
+          roleSlug: d.targetRole ?? null,
+          options: d.roleOptions ?? [],
+        });
+      })
+      .catch((e: any) => setFetchErr(e.message || "Gagal memuat profil"))
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   async function update(patch: Partial<P>) {
     if (!p) return;
@@ -55,12 +75,27 @@ export function KnowQuiz() {
   }
   const toggle = (k: "interests" | "skillNames", v: string) => update({ [k]: p![k].includes(v) ? p![k].filter((x) => x !== v) : [...p![k], v] } as any);
 
-  if (!p) return <p className="text-ink-2" role="status">Memuat…</p>;
+  if (fetchErr) {
+    return (
+      <div className="card p-6 flex flex-col gap-3 items-start">
+        <p className="text-[#B42318] m-0 font-medium" role="alert">{fetchErr}</p>
+        <button type="button" onClick={loadProfile} className="btn-primary">Coba lagi</button>
+      </div>
+    );
+  }
+  if (!p || loading) return <KnowSkeleton />;
   const unrated = p.skillNames.filter((n) => !p.levels[n]);
   const complete = p.interests.length > 0 && p.skillNames.length > 0 && unrated.length === 0 && p.goals.length > 0 && !!p.workStyle;
   const doneFlags = [p.interests.length > 0, p.skillNames.length > 0, p.skillNames.length > 0 && unrated.length === 0, p.goals.length > 0, !!p.workStyle];
   const pct = Math.round((doneFlags.filter(Boolean).length / doneFlags.length) * 100);
   const canNext = [p.interests.length > 0, p.skillNames.length > 0, p.skillNames.length > 0 && unrated.length === 0, p.goals.length > 0, !!p.workStyle][step];
+  const reqHints = [
+    "Pilih minimal 1 minat (wajib)",
+    "Pilih minimal 1 skill (wajib)",
+    unrated.length > 0 ? `Beri nilai level untuk semua skill (${unrated.length} belum dinilai)` : "Beri nilai level untuk semua skill (wajib)",
+    "Pilih minimal 1 target tahun ini (wajib)",
+    "Pilih 1 gaya kerja tim (wajib)",
+  ];
   const style = WORK_STYLES.find((w) => w.id === p.workStyle);
   const goalTitles = p.goals.map((id) => GOALS.find((g) => g.id === id)?.title).filter(Boolean) as string[];
 
@@ -165,13 +200,20 @@ export function KnowQuiz() {
             </Q>
           )}
           {step === 4 && <Q t="Di tim, kamu paling nyaman jadi apa?" s="Biar kami bisa cariin partner yang ngelengkapin kamu."><Cards list={WORK_STYLES} val={p.workStyle} pick={(id) => update({ workStyle: id })} /></Q>}
-          <div className="flex justify-between items-center gap-3 pt-5 border-t border-[#EEF0F6] flex-wrap">
-            <div className="flex items-center gap-3 flex-wrap">
-              {step > 0 ? <button type="button" className="btn-secondary" onClick={() => setStep(step - 1)}>Kembali</button> : <Link href="/dashboard" className="btn-secondary">Kembali</Link>}
-              <span className="text-sm text-ink-3" role="status">{saving === "saving" ? "Nyimpen…" : saving === "error" ? "Gagal nyimpen, coba lagi" : "Auto-save aktif"}</span>
+          <div className="flex flex-col gap-3 pt-5 border-t border-[#EEF0F6]">
+            {!canNext && (
+              <p className="m-0 text-xs font-semibold text-[#B42318] bg-[#FEF3F2] py-2 px-3 rounded-lg self-start sm:self-end">
+                ⚠️ {reqHints[step]}
+              </p>
+            )}
+            <div className="flex justify-between items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
+                {step > 0 ? <button type="button" className="btn-secondary" onClick={() => setStep(step - 1)}>Kembali</button> : <Link href="/dashboard" className="btn-secondary">Kembali</Link>}
+                <span className="text-sm text-ink-3" role="status">{saving === "saving" ? "Nyimpen…" : saving === "error" ? "Gagal nyimpen, coba lagi" : "Auto-save aktif"}</span>
+              </div>
+              {step < 4 ? <button type="button" className="btn-primary" disabled={!canNext} onClick={() => setStep(step + 1)}>Lanjut <Icon name="arrow" size={18} sw={2.2} /></button>
+                : <Link href="/grow" aria-disabled={!complete} className={`btn-primary ${complete && saving !== "saving" ? "" : "pointer-events-none opacity-50"}`}>Simpan, lanjut ke GROW <Icon name="arrow" size={18} sw={2.2} /></Link>}
             </div>
-            {step < 4 ? <button type="button" className="btn-primary" disabled={!canNext} onClick={() => setStep(step + 1)}>Lanjut <Icon name="arrow" size={18} sw={2.2} /></button>
-              : <Link href="/grow" aria-disabled={!complete} className={`btn-primary ${complete && saving !== "saving" ? "" : "pointer-events-none opacity-50"}`}>Simpan, lanjut ke GROW <Icon name="arrow" size={18} sw={2.2} /></Link>}
           </div>
         </section>
         <aside aria-label="Profil potensi" className="flex-[1_1_320px] min-w-0 flex flex-col gap-4">

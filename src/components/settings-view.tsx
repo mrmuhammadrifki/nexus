@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, useFetch } from "@/lib/client";
 import { Field } from "./auth-form";
 import { Icon } from "./ui";
+import { SettingsSkeleton } from "./skeletons";
 
 type Me = { name: string; email: string; campus: string; major: string; semester: number | null; visibility: "public" | "private" };
 
@@ -12,14 +13,47 @@ export function SettingsView() {
   const router = useRouter();
   const { data, setData } = useFetch<Me>("/api/me");
   const [msg, setMsg] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState("");
-  if (!data) return <p role="status" className="text-ink-2">Memuat…</p>;
+  if (!data) return <SettingsSkeleton />;
 
   const set = (p: Partial<Me>) => setData({ ...data, ...p });
   async function save(patch: Partial<Me>, ok = "Tersimpan") {
     setBusy(true); setErr(""); setMsg("");
-    try { await api("/api/me", { method: "PATCH", json: patch }); setMsg(ok); router.refresh(); } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+    try { await api("/api/me", { method: "PATCH", json: patch }); setMsg(ok); router.refresh(); } catch (e: any) { setErr(e.message === "Input tidak valid" ? "Cek kembali data yang Anda masukkan" : e.message); } finally { setBusy(false); }
   }
+
+  function handleSaveProfile() {
+    if (!data) return;
+    setErr("");
+    const errors: Record<string, string> = {};
+
+    const name = data.name?.trim();
+    if (!name) errors.name = "Nama wajib diisi";
+    else if (name.length < 2) errors.name = "Nama minimal 2 karakter";
+
+    const campus = data.campus?.trim();
+    if (!campus) errors.campus = "Nama kampus wajib diisi";
+    else if (campus.length < 2) errors.campus = "Nama kampus minimal 2 karakter";
+
+    const major = data.major?.trim();
+    if (!major) errors.major = "Nama jurusan wajib diisi";
+    else if (major.length < 2) errors.major = "Nama jurusan minimal 2 karakter";
+
+    const sem = data.semester;
+    if (sem === null || sem === undefined || isNaN(sem)) errors.semester = "Semester wajib diisi";
+    else if (sem < 1 || sem > 14) errors.semester = "Semester harus antara 1 sampai 14";
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setErr("Mohon lengkapi isian wajib di bawah");
+      return;
+    }
+
+    setFieldErrors({});
+    save({ name, campus, major, semester: sem });
+  }
+
   async function exportData() {
     const d = await api("/api/me?export=1");
     const a = document.createElement("a");
@@ -38,11 +72,39 @@ export function SettingsView() {
       <div className="grid gap-6 lg:grid-cols-2 items-start">
         <section className="card flex flex-col gap-4" aria-labelledby="p-h">
           <h2 id="p-h" className="m-0 text-lg font-bold">Profil</h2>
-          <Field label="Nama" value={data.name} onChange={(v) => set({ name: v })} />
-          <Field label="Kampus" value={data.campus} onChange={(v) => set({ campus: v })} />
-          <Field label="Jurusan" value={data.major} onChange={(v) => set({ major: v })} />
-          <Field label="Semester" type="number" min={1} max={14} inputMode="numeric" value={String(data.semester ?? "")} onChange={(v) => set({ semester: Number(v) || null })} />
-          <button className="btn-primary self-start" disabled={busy} onClick={() => save({ name: data.name, campus: data.campus, major: data.major, ...(data.semester ? { semester: data.semester } : {}) })}>Simpan profil</button>
+          <Field
+            label="Nama"
+            value={data.name}
+            onChange={(v) => { set({ name: v }); if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: "" }); }}
+            required
+            error={fieldErrors.name}
+          />
+          <Field
+            label="Kampus"
+            value={data.campus}
+            onChange={(v) => { set({ campus: v }); if (fieldErrors.campus) setFieldErrors({ ...fieldErrors, campus: "" }); }}
+            required
+            error={fieldErrors.campus}
+          />
+          <Field
+            label="Jurusan"
+            value={data.major}
+            onChange={(v) => { set({ major: v }); if (fieldErrors.major) setFieldErrors({ ...fieldErrors, major: "" }); }}
+            required
+            error={fieldErrors.major}
+          />
+          <Field
+            label="Semester"
+            type="number"
+            min={1}
+            max={14}
+            inputMode="numeric"
+            value={String(data.semester ?? "")}
+            onChange={(v) => { set({ semester: Number(v) || null }); if (fieldErrors.semester) setFieldErrors({ ...fieldErrors, semester: "" }); }}
+            required
+            error={fieldErrors.semester}
+          />
+          <button className="btn-primary self-start" disabled={busy} onClick={handleSaveProfile}>Simpan profil</button>
         </section>
 
         <div className="flex flex-col gap-6">

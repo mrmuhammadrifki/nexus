@@ -19,6 +19,14 @@ describe("halaman publik & penjaga halaman", () => {
     expect((await u.req("GET", "/dashboard")).status).toBe(200);
     expect((await u.req("GET", "/masuk")).status).toBe(307); // sudah login → /dashboard
   });
+  it("sesi lama yang akunnya sudah dihapus: /dashboard melempar ke /masuk dan /masuk tetap merender 200 (tanpa redirect loop)", async () => {
+    const u = await newUser("Ghost");
+    expect((await u.del("/api/me")).status).toBe(200);
+    const rDash = await u.req("GET", "/dashboard");
+    expect(rDash.status).toBe(307);
+    const rMasuk = await u.req("GET", "/masuk");
+    expect(rMasuk.status).toBe(200); // tetap 200, tidak redirect loop ke /dashboard
+  });
   it("landing: judul, CTA ke /daftar untuk tamu dan ke /dashboard untuk yang sudah login", async () => {
     const html = await (await get("/")).text();
     expect(html).toContain("Dari “aku bisa apa, ya?” jadi proyek yang beneran berdampak.");

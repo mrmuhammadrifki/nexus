@@ -54,8 +54,8 @@ export default async function Landing() {
             {[["#cara-kerja", "Cara kerja"], ["#alur", "Kenapa NEXUS"], ["#transparan", "Transparansi"]].map(([h, l]) => <a key={h} href={h} className="px-3.5 py-2.5">{l}</a>)}
           </nav>
           <div className="flex items-center gap-2">
-            {!authed && <Link href="/masuk" className="px-4 py-2.5 text-[15px] font-semibold">Masuk</Link>}
-            <Link href={cta} className="btn-primary h-11">{authed ? "Buka dashboard" : "Coba gratis"}</Link>
+            {!authed && <Link href="/masuk" prefetch={true} className="px-4 py-2.5 text-[15px] font-semibold">Masuk</Link>}
+            <Link href={cta} prefetch={true} className="btn-primary h-11">{authed ? "Buka dashboard" : "Coba gratis"}</Link>
           </div>
         </div>
       </header>
@@ -77,7 +77,7 @@ export default async function Landing() {
           </h1>
           <p className="fade-up m-0 text-lg leading-relaxed text-ink-2 max-w-[540px]" style={{ "--d": "700ms" } as React.CSSProperties}>NEXUS nemenin kamu step by step: kenali kekuatanmu, upgrade skill yang masih kurang, cari partner tim yang klop, rancang solusi, sampai cek proyekmu udah siap atau belum. Semua di satu tempat, plus AI Coach yang bantu ngasah ide dan ngecek proyekmu.</p>
           <div className="fade-up flex flex-wrap gap-3" style={{ "--d": "850ms" } as React.CSSProperties}>
-            <Link href={cta} className="btn-primary shine arrow-nudge h-[54px] px-6 text-base rounded-[14px]">Gas, mulai sekarang <Icon name="arrow" size={18} sw={2.2} /></Link>
+            <Link href={cta} prefetch={true} className="btn-primary shine arrow-nudge h-[54px] px-6 text-base rounded-[14px]">Gas, mulai sekarang <Icon name="arrow" size={18} sw={2.2} /></Link>
             <a href="#cara-kerja" className="btn-secondary h-[54px] px-6 text-base rounded-[14px]">Cek cara kerjanya</a>
           </div>
           <ul className="fade-up m-0 p-0 list-none flex flex-wrap gap-5 text-sm text-ink-2 font-medium">
@@ -192,7 +192,7 @@ export default async function Landing() {
         <Reveal className="cta-bg bg-primary rounded-[28px] px-8 md:px-12 py-16 md:py-[72px] flex flex-col items-center text-center gap-5 text-white">
           <h2 className="m-0 text-3xl md:text-[44px] leading-[1.1] font-extrabold tracking-[-0.03em] max-w-[720px]">Jangan cuma siap hadapi masa depan. Yuk, ikut bentuk juga!</h2>
           <p className="m-0 text-lg text-[#DCE4FF] max-w-[560px]">Mulai dari step pertama: kenalan sama potensimu.</p>
-          <Link href={cta} className="btn shine arrow-nudge h-14 px-7 rounded-[14px] bg-white text-primary-dark text-base hover:scale-[1.03] transition-transform">Gas, mulai sekarang <Icon name="arrow" size={18} sw={2.2} /></Link>
+          <Link href={cta} prefetch={true} className="btn shine arrow-nudge h-14 px-7 rounded-[14px] bg-white text-primary-dark text-base hover:scale-[1.03] transition-transform">Gas, mulai sekarang <Icon name="arrow" size={18} sw={2.2} /></Link>
         </Reveal>
       </section>
 
